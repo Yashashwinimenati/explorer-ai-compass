@@ -1,6 +1,5 @@
 
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -29,7 +28,6 @@ const ItineraryForm = ({ onBack, onSuccess }: ItineraryFormProps) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
-  const navigate = useNavigate();
 
   const interestOptions = [
     'Culture & History',
@@ -82,9 +80,35 @@ const ItineraryForm = ({ onBack, onSuccess }: ItineraryFormProps) => {
       return;
     }
 
+    // Validate dates
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (start < today) {
+      toast({
+        title: "Invalid date",
+        description: "Start date cannot be in the past",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (end <= start) {
+      toast({
+        title: "Invalid date range",
+        description: "End date must be after start date",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsGenerating(true);
 
     try {
+      console.log('Submitting itinerary request...');
+      
       const { data, error } = await supabase.functions.invoke('generate-itinerary', {
         body: {
           destination,
@@ -102,20 +126,22 @@ const ItineraryForm = ({ onBack, onSuccess }: ItineraryFormProps) => {
         throw error;
       }
 
-      if (data.success) {
+      console.log('Itinerary response:', data);
+
+      if (data?.success) {
         toast({
           title: "Itinerary generated!",
-          description: "Your personalized travel plan has been created.",
+          description: "Your personalized travel plan has been created successfully.",
         });
         onSuccess();
       } else {
-        throw new Error(data.error || 'Failed to generate itinerary');
+        throw new Error(data?.error || 'Failed to generate itinerary');
       }
     } catch (error) {
       console.error('Error:', error);
       toast({
         title: "Error",
-        description: "Failed to generate itinerary. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to generate itinerary. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -285,7 +311,7 @@ const ItineraryForm = ({ onBack, onSuccess }: ItineraryFormProps) => {
                 </Button>
                 <Button 
                   type="submit" 
-                  variant="travel"
+                  variant="default"
                   disabled={isGenerating}
                   className="min-w-[150px]"
                 >
