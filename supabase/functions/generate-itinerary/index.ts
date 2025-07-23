@@ -3,7 +3,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { supabase } from '../_shared/supabase.ts';
 
-const geminiApiKey = Deno.env.get('GEMINI_API_KEY') || 'AIzaSyD95kv94Asj_EAo2-bguz01carr8PjCVOk';
+const geminiApiKey = 'AIzaSyD95kv94Asj_EAo2-bguz01carr8PjCVOk';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -96,12 +96,14 @@ Please provide a comprehensive itinerary that includes:
 
 Format the response as a well-structured travel guide with clear headings and bullet points for easy reading.`;
 
-    console.log('Calling Gemini API...');
+    console.log('Calling Gemini API with gemini-2.0-flash model...');
 
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${geminiApiKey}`, {
+    // Updated API call to use the correct endpoint and model
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'X-goog-api-key': geminiApiKey,
       },
       body: JSON.stringify({
         contents: [{
@@ -143,7 +145,7 @@ Format the response as a well-structured travel guide with clear headings and bu
     }
 
     const data = await response.json();
-    console.log('Gemini API response received');
+    console.log('Gemini API response received successfully');
 
     if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
       console.error('Invalid Gemini response structure:', data);
@@ -153,7 +155,7 @@ Format the response as a well-structured travel guide with clear headings and bu
     const generatedContent = data.candidates[0].content.parts[0].text;
     console.log('Generated content length:', generatedContent.length);
 
-    // Save the itinerary to the database
+    // Save the itinerary to the database with user data
     const { data: itinerary, error: dbError } = await supabase
       .from('itineraries')
       .insert({
@@ -168,7 +170,9 @@ Format the response as a well-structured travel guide with clear headings and bu
         content: {
           generated_text: generatedContent,
           generated_at: new Date().toISOString(),
-          prompt_used: prompt
+          prompt_used: prompt,
+          user_email: user.email,
+          user_name: user.user_metadata?.full_name || user.email
         }
       })
       .select()
@@ -189,7 +193,15 @@ Format the response as a well-structured travel guide with clear headings and bu
         destination: itinerary.destination,
         start_date: itinerary.start_date,
         end_date: itinerary.end_date,
-        created_at: itinerary.created_at
+        num_travelers: itinerary.num_travelers,
+        budget: itinerary.budget,
+        interests: itinerary.interests,
+        created_at: itinerary.created_at,
+        user_data: {
+          user_id: user.id,
+          user_email: user.email,
+          user_name: user.user_metadata?.full_name || user.email
+        }
       }
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

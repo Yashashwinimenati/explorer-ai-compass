@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, MapPin, Calendar, Users, DollarSign, Heart, Plane, Loader2 } from 'lucide-react';
+import { ArrowLeft, MapPin, Calendar, Users, DollarSign, Heart, Plane, Loader2, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -107,7 +107,7 @@ const ItineraryForm = ({ onBack, onSuccess }: ItineraryFormProps) => {
     setIsGenerating(true);
 
     try {
-      console.log('Submitting itinerary request...');
+      console.log('Submitting itinerary request with user data...');
       
       const { data, error } = await supabase.functions.invoke('generate-itinerary', {
         body: {
@@ -130,9 +130,22 @@ const ItineraryForm = ({ onBack, onSuccess }: ItineraryFormProps) => {
 
       if (data?.success) {
         toast({
-          title: "Itinerary generated!",
-          description: "Your personalized travel plan has been created successfully.",
+          title: "Success!",
+          description: `Your personalized itinerary for ${destination} has been created and saved to your account.`,
+          action: (
+            <CheckCircle className="h-4 w-4 text-green-500" />
+          ),
         });
+        
+        // Reset form
+        setDestination('');
+        setStartDate('');
+        setEndDate('');
+        setNumTravelers('1');
+        setBudget('');
+        setInterests([]);
+        setAdditionalInfo('');
+        
         onSuccess();
       } else {
         throw new Error(data?.error || 'Failed to generate itinerary');
@@ -140,7 +153,7 @@ const ItineraryForm = ({ onBack, onSuccess }: ItineraryFormProps) => {
     } catch (error) {
       console.error('Error:', error);
       toast({
-        title: "Error",
+        title: "Generation failed",
         description: error instanceof Error ? error.message : "Failed to generate itinerary. Please try again.",
         variant: "destructive",
       });
@@ -164,9 +177,13 @@ const ItineraryForm = ({ onBack, onSuccess }: ItineraryFormProps) => {
                 <Plane className="h-6 w-6 text-primary" />
                 <div>
                   <h1 className="text-xl font-bold text-foreground">Plan Your Trip</h1>
-                  <p className="text-sm text-muted-foreground">Let AI create your perfect itinerary</p>
+                  <p className="text-sm text-muted-foreground">AI-powered personalized itinerary generation</p>
                 </div>
               </div>
+            </div>
+            <div className="text-right">
+              <p className="text-sm font-medium text-foreground">Logged in as</p>
+              <p className="text-xs text-muted-foreground">{user?.email}</p>
             </div>
           </div>
         </div>
@@ -180,7 +197,7 @@ const ItineraryForm = ({ onBack, onSuccess }: ItineraryFormProps) => {
               Create New Itinerary
             </CardTitle>
             <CardDescription>
-              Tell us about your dream trip and we'll create a personalized itinerary for you
+              Tell us about your dream trip and we'll create a personalized itinerary using AI
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -193,7 +210,7 @@ const ItineraryForm = ({ onBack, onSuccess }: ItineraryFormProps) => {
                 </Label>
                 <Input
                   id="destination"
-                  placeholder="e.g., Paris, France"
+                  placeholder="e.g., Paris, France or Tokyo, Japan"
                   value={destination}
                   onChange={(e) => setDestination(e.target.value)}
                   required
@@ -313,12 +330,12 @@ const ItineraryForm = ({ onBack, onSuccess }: ItineraryFormProps) => {
                   type="submit" 
                   variant="default"
                   disabled={isGenerating}
-                  className="min-w-[150px]"
+                  className="min-w-[180px]"
                 >
                   {isGenerating ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Generating...
+                      Generating with AI...
                     </>
                   ) : (
                     <>
